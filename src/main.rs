@@ -1,8 +1,30 @@
 use rusqlite::ErrorCode;
 use cli_tables::Table;
-use std::io;
+use std::{io, thread, time::Duration};
+use tui::{
+    backend::{CrosstermBackend, Backend},
+    widgets::{List, ListItem, ListState, Widget, Block, Borders},
+    layout::{Layout, Constraint, Direction},
+    text::{Span, Spans},
+    Terminal,
+    Frame
+};
+use crossterm::{
+    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode},
+    execute,
+    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+};
 use crate::db::Database;
 mod db;
+
+enum InputMode {
+    Normal,
+    Title,
+    Username,
+    Password,
+    List,
+    Delete
+}
 
 #[derive(Clone, Debug)]
 pub struct Password {
@@ -10,6 +32,17 @@ pub struct Password {
     title: String,
     username: String,
     password: String
+}
+
+struct Helsafe {
+    db: Database,
+    passwords: Vec<Password>,
+    mode: InputMode,
+    search_txt: String,
+    search_list: Vec<Password>,
+    new_title: String,
+    new_username: String,
+    new_password: String,
 }
 
 impl Password {
@@ -32,7 +65,86 @@ impl Password {
     }
 }
 
-fn main() {
+impl Helsafe {
+    pub fn new(key: String) -> Helsafe {
+        let db = match Database::new(key) {
+            Ok(db) => db,
+            Err(e) => {
+                if e.sqlite_error_code().unwrap() == ErrorCode::NotADatabase {
+                    println!("Passphrase is not valid!");
+                    std::process::exit(1);
+                } else {
+                    println!("{}", e.to_string());
+                    std::process::exit(1);
+                }
+            }
+        };
+
+        let passwords = db.get_passwords();
+
+        Helsafe {
+            db,
+            passwords,
+            mode: InputMode::Normal,
+            search_txt: String::new(),
+            search_list: vec![],
+            new_title: String::new(),
+            new_username: String::new(),
+            new_password: String::new()
+        }
+    }
+
+    pub fn change_mode(&mut self, mode: InputMode) {
+        self.mode = mode;
+    }
+
+    pub fn insert(&mut self) {
+        let password: Password = Password::new(
+            self.new_title.to_owned(),
+            self.new_username.to_owned(),
+            self.new_password.to_owned()
+        );
+        self.db.insert(&password);
+        self.passwords.push(password);
+        self.change_mode(InputMode::Normal);
+    }
+
+    pub fn search(&mut self) {
+        self.search_list = self.passwords.clone().into_iter()
+            .filter(|item| item.title.starts_with(&self.search_txt.to_owned()))
+            .collect();
+    }
+
+    
+}
+
+fn main() -> Result<(), io::Error> {
+    let helkey: String = rpassword::prompt_password("Enter HELKEY:").unwrap();
+    let mut helsafe = Helsafe::new(helkey);
+    //setup terminal
+    enable_raw_mode()?;
+    let mut stdout = io::stdout();
+    execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
+    let backend = CrosstermBackend::new(stdout);
+    let mut terminal = Terminal::new(backend)?;
+
+    let res = run_app(&mut terminal, &mut helsafe);
+
+    // restore terminal
+    disable_raw_mode()?;
+    execute!(
+        terminal.backend_mut(),
+        LeaveAlternateScreen,
+        DisableMouseCapture
+    )?;
+    terminal.show_cursor()?;
+
+    if let Err(err) = res {
+        println!("{:?}", err)
+    }
+
+    Ok(())
+    /*
     let key = "password".to_string();
     let db = match Database::new(key) {
         Ok(db) => db,
@@ -92,7 +204,7 @@ fn main() {
             db.insert(&password);
         }
         else if input.trim().parse::<u32>().unwrap() == 1 {
-            let passwords = db.load();
+            let passwords = db.get_passwords();
             println!("{:?}", passwords);
         }
         else if input.trim().parse::<u32>().unwrap() == 2 {
@@ -108,4 +220,55 @@ fn main() {
             break;
         }
     }
+    */
+}
+
+fn run_app<B: Backend>(terminal: &mut Terminal<B>, helsafe: &mut Helsafe) -> io::Result<()> {
+    loop {
+        terminal.draw(|f| ui(f, helsafe))?;
+
+        if let Event::Key(key) = event::read()? {
+            if let KeyCode::Char('q') = key.code {
+                return Ok(());
+            }
+        }
+    }
+}
+
+fn ui<B: Backend>(f: &mut Frame<B>, helsafe: &mut Helsafe) {
+    let chunks = Layout::default()
+        .direction(Direction::Horizontal)
+        //.margin(1)
+        .constraints(
+            [
+                Constraint::Percentage(60),
+                Constraint::Percentage(40)
+            ]
+            .as_ref()
+        )
+        .split(f.size());
+
+    let block = Block::default()
+        .title("Menu")
+        .borders(Borders::ALL);
+    f.render_widget(block, chunks[0]);
+
+    let block = Block::default()
+        .title("Vault")
+        .borders(Borders::ALL);
+    f.render_widget(block, chunks[1]);
+
+    // Print out the passwords
+    let passwords = &helsafe.passwords; // Assuming `get_passwords` retrieves the passwords from `helsafe`
+    let password_texts: Vec<ListItem> = passwords
+        .iter()
+        .map(|password| ListItem::new(Spans::from(vec![Span::raw(password.password.clone())])))
+        .collect();
+    let password_list = List::new(password_texts)
+        .block(
+            Block::default()
+                .title("Passwords")
+                .borders(Borders::ALL)
+        );
+    f.render_widget(password_list, chunks[1]);
 }

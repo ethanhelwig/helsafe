@@ -30,7 +30,7 @@ impl Database {
         Ok(())
     }
 
-    pub fn load(&self) -> Vec<Password> {
+    pub fn get_passwords(&self) -> Vec<Password> {
         let mut statement = self.conn.prepare("select * from passwords").unwrap();
         let items: Vec<Password> = statement.query_map([], |row| {
             let password = Password::new_with_id(
