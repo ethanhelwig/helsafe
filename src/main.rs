@@ -1,4 +1,113 @@
-use rusqlite::ErrorCode;
+mod password;
+mod helsafe;
+mod cli;
+mod db;
+
+use crate::{
+    password::Password,
+    helsafe::Helsafe,
+    cli::Cli
+};
+use rpassword;
+use std::{
+    io::{self, Write, stdin}
+};
+/*
+use crate::password::Password;
+use crate::helsafe::Helsafe;
+use cli_tables::Table;
+use std::{io::{self, Write, stdin}, error::Error};
+use rpassword;*/
+
+pub enum OperationMode {
+    Menu,
+    Entry,
+    Delete,
+    Search,
+    List,
+    Copy,
+    Exit
+}
+
+struct App {
+    mode: OperationMode,
+    safe: Helsafe,
+    view: Cli
+}
+
+impl App {
+    fn new(key: &String) -> Self {
+        App {
+            safe: Helsafe::new(key),
+            mode: OperationMode::Menu,
+            view: Cli::new()
+        }
+    }
+
+    fn change_mode(&mut self, new_mode: OperationMode) {
+        self.mode = new_mode;
+    }
+}
+
+fn main() {
+    let key = rpassword::prompt_password("Enter password:").unwrap();
+    let mut app = App::new(&key);
+
+    loop {
+        match app.mode {
+            OperationMode::Menu => {
+                let choice = app.view.menu_handler();
+                app.change_mode(choice);
+            },
+            OperationMode::Entry => {
+                let new_password = app.view.new_entry_handler();
+                app.safe.insert(&new_password);
+                app.change_mode(OperationMode::Menu);
+            },
+            OperationMode::Delete => {
+                let id = app.view.delete_handler();
+
+                let result = app.safe.delete(id);
+                match result {
+                    Ok(()) => {
+                        println!("Password deleted successfully.");
+                    }
+                    Err(err) => {
+                        println!("Failed to delete password: {}", err);
+                    }
+                }
+
+                app.change_mode(OperationMode::Menu);
+            },
+            OperationMode::Search => {
+                println!("Search");
+            },
+            OperationMode::List => {
+                println!("\nList:");
+
+                app.safe.get_passwords();
+                println!("{}", app.safe);
+
+                print!("( Press enter to continue )");
+                io::stdout().flush().expect("Failed to flush stdout");
+                let mut input: String = String::new();
+                stdin().read_line(&mut input).expect("Failed to read input");
+
+                app.change_mode(OperationMode::Menu);
+            },
+            OperationMode::Copy => {
+                println!("Copy");
+            }
+            OperationMode::Exit => {
+                println!("Exitting");
+                std::process::exit(1);
+            }
+        }
+    }
+}
+  
+
+/*use rusqlite::ErrorCode;
 use cli_tables::Table;
 use std::{io, thread, time::Duration};
 use tui::{
@@ -271,4 +380,4 @@ fn ui<B: Backend>(f: &mut Frame<B>, helsafe: &mut Helsafe) {
                 .borders(Borders::ALL)
         );
     f.render_widget(password_list, chunks[1]);
-}
+}*/
