@@ -75,22 +75,21 @@ impl Helsafe {
 
 impl Display for Helsafe {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        let mut table_arr: Vec<Vec<String>> = Vec::new();
-
+        let mut table = Table::new();
         let field_names = vec![
-            "Id".to_string(),
-            "Title".to_string(),
-            "Username".to_string(),
-            "Password".to_string(),
-            "Email".to_string(),
-            "Recovery Codes".to_string(),
-            "Access Tokens".to_string(),
-            "Notes".to_string()
+            "Id",
+            "Title",
+            "Username",
+            "Password",
+            "Email",
+            "Recovery Codes",
+            "Access Tokens",
+            "Notes"
         ];
+        table.push_row(&field_names).unwrap();
 
-        table_arr.push(field_names);
         for password in &self.passwords {
-            let row: Vec<String> = vec![
+            let row = vec![
                 password.id.to_string(),
                 password.title.clone(),
                 password.username.clone(),
@@ -100,10 +99,9 @@ impl Display for Helsafe {
                 password.access_tokens.clone(),
                 password.notes.clone(),
             ];
-            table_arr.push(row);
+            table.push_row_string(&row).unwrap();
         }
 
-        let mut table: Table = Table::new(&table_arr);
         write!(f, "{}", table.to_string())
     }
 }
