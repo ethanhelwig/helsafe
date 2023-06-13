@@ -10,32 +10,31 @@ use crate::{
 
 pub struct Cli {
     stdin: Stdin,
-    str_vec: Vec<Vec<String>>
 }
 
 impl Cli {
     pub fn new() -> Self {
         Cli {
             stdin: io::stdin(),
-            str_vec: Vec::new()
         }
     }
 
     pub fn menu_handler(&mut self) -> OperationMode {
         println!("\nMenu:");
 
-        self.str_vec = vec![
-            vec!["#".to_string(), "Options".to_string()],
-            vec!["0".to_string(), "Add password".to_string()],
-            vec!["1".to_string(), "Delete password".to_string()],
-            vec!["2".to_string(), "Search password".to_string()],
-            vec!["3".to_string(), "List passwords".to_string()],
-            vec!["4".to_string(), "Copy password".to_string()],
-            vec!["5".to_string(), "Exit".to_string()]
-        ];
-
         // create an ascii table
-        let mut table = Table::new(&self.str_vec);
+        let mut table = Table::new();
+        let options = vec![
+            vec!["#", "Options"],
+            vec!["0", "Add password"],
+            vec!["1", "Delete password"],
+            vec!["2", "Search password"],
+            vec!["3", "List passwords"],
+            vec!["4", "Copy password"],
+            vec!["5", "Exit"]
+        ];
+        table.push_rows(&options).unwrap();
+
         let mut input = String::new();
 
         loop {
@@ -70,117 +69,109 @@ impl Cli {
     }
 
     pub fn new_entry_handler(&mut self) -> Password{
-        let mut headers = vec![
-            "title".to_string(),
-            "username".to_string(),
-            "password".to_string(),
-            "email".to_string(),
-            "recovery_codes".to_string(),
-            "access_tokens".to_string(),
-            "notes".to_string(),
+        let mut table = Table::new();
+        let headers = vec![
+            "Title",
+            "Username",
+            "Password",
+            "Email",
+            "Recovery_codes",
+            "Access_tokens",
+            "Notes",
         ];
-        let mut title = String::new();
-        let mut username = String::new();
-        let mut password = String::new();
-        let mut email = String::new();
-        let mut recovery_codes = String::new();
-        let mut access_tokens = String::new();
-        let mut notes = String::new();
-
-        self.str_vec = vec![
-            headers,
-            vec![
-                title,
-                username,
-                password,
-                email,
-                recovery_codes,
-                access_tokens,
-                notes,
-            ]
-        ];
+        table.push_row(&headers).unwrap();
+        
+        let mut entry = vec![String::new(); 7];
 
         println!("\n( Password creation manager )");
-        let mut table = Table::new(&self.str_vec);
         println!("{}", table.to_string());
 
         print!("Title: ");
-        let mut title = String::new();
         io::stdout()
             .flush()
             .expect("Failed to flush stdout.");
         self.stdin
-            .read_line(&mut title)
+            .read_line(&mut entry[0])
             .expect("Failed to read input.");
-        let title = title.trim();
+        entry[0] = entry[0].trim().to_string();
+        table.push_row_string(&entry).unwrap();
+        println!("{}", table.to_string());
         
 
         print!("Username: ");
-        let mut username = String::new();
         io::stdout()
             .flush()
             .expect("Failed to flush stdout.");
         self.stdin
-            .read_line(&mut username)
+            .read_line(&mut entry[1])
             .expect("Failed to read input.");
-        let username = username.trim();
+        entry[1] = entry[1].trim().to_string();
+        table.delete_record(1).unwrap();
+        table.push_row_string(&entry).unwrap();
 
-        let password = rpassword::prompt_password("Password: ").unwrap();
+        entry[2] = rpassword::prompt_password("Password: ").unwrap();
         print!("*************\n");
         io::stdout()
             .flush()
             .expect("Failed to flush stdout.");
+        entry[2] = entry[2].trim().to_string();
+        table.delete_record(1).unwrap();
+        table.push_row_string(&entry).unwrap();
 
         print!("Email: ");
-        let mut email = String::new();
         io::stdout()
             .flush()
             .expect("Failed to flush stdout.");
         self.stdin
-            .read_line(&mut email)
+            .read_line(&mut entry[3])
             .expect("Failed to read input.");
-        let email = email.trim();
+        entry[3] = entry[3].trim().to_string();
+        table.delete_record(3).unwrap();
+        table.push_row_string(&entry).unwrap();
 
         print!("Recovery Codes: ");
-        let mut recovery_codes = String::new();
         io::stdout()
             .flush()
             .expect("Failed to flush stdout.");
         self.stdin
-            .read_line(&mut recovery_codes)
+            .read_line(&mut entry[4])
             .expect("Failed to read input.");
-        let recovery_codes = recovery_codes.trim();
+        entry[4] = entry[4].trim().to_string();
+        table.delete_record(1).unwrap();
+        table.push_row_string(&entry).unwrap();
 
         print!("Access Tokens: ");
-        let mut access_tokens = String::new();
         io::stdout()
             .flush()
             .expect("Failed to flush stdout.");
         self.stdin
-            .read_line(&mut access_tokens)
+            .read_line(&mut entry[5])
             .expect("Failed to read input.");
-        let access_tokens = access_tokens.trim();
+        entry[5] = entry[5].trim().to_string();
+        table.delete_record(1).unwrap();
+        table.push_row_string(&entry).unwrap();
 
         print!("Notes: ");
-        let mut notes = String::new();
         io::stdout()
             .flush()
             .expect("Failed to flush stdout.");
         self.stdin
-            .read_line(&mut notes)
+            .read_line(&mut entry[6])
             .expect("Failed to read input.");
-        let notes = notes.trim();
+        entry[6] = entry[6].trim().to_string();
+        table.delete_record(1).unwrap();
+        table.push_row_string(&entry).unwrap();
 
         // Create the Password struct using the trimmed values
         Password {
             id: 0,
-            title: title.to_string(),
-            username: username.to_string(),
-            password: password.to_string(),
-            email: email.to_string(),
-            recovery_codes: recovery_codes.to_string(),
-            access_tokens: access_tokens.to_string(),
-            notes: notes.to_string(),
+            title: entry[0].clone(),
+            username: entry[1].clone(),
+            password: entry[2].clone(),
+            email: entry[3].clone(),
+            recovery_codes: entry[4].clone(),
+            access_tokens: entry[5].clone(),
+            notes: entry[6].clone(),
         }
     }
 
