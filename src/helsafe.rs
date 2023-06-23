@@ -1,7 +1,7 @@
 use crate::db::Database;
 use crate::password::Password;
-use cli_tables::Table;
-use std::{error::Error, process::exit, fmt::{self, Display, Formatter}};
+use cli_tables::table_from;
+use std::{error, process::exit, fmt::{self, Display, Formatter}};
 use rusqlite::ErrorCode;
 
 #[derive(Debug)]
@@ -20,7 +20,7 @@ pub struct Helsafe {
 }
 
 impl Helsafe {
-    pub fn new(key: &String) -> Helsafe {
+    pub fn new(key: &String) -> Result<Helsafe, Box<dyn error::Error>> {
         let db: Database = match Database::new(key.to_owned()) {
             Ok(db) => db,
             Err(e) => {
@@ -36,13 +36,13 @@ impl Helsafe {
             }
         };
 
-        let passwords: Vec<Password> = db.get_passwords();
+        let passwords: Vec<Password> = db.get_passwords()?;
 
-        Helsafe {
+        Ok(Helsafe {
             db,
             passwords,
             search_txt: String::new(),
-            search_list: vec![],
+            search_list: Vec::new(),
             new_title: String::new(),
             new_username: String::new(),
             new_password: String::new(),
@@ -50,32 +50,37 @@ impl Helsafe {
             new_recovery_codes: String::new(),
             new_access_tokens: String::new(),
             new_notes: String::new(),
-        }
+        })
     }
 
-    pub fn insert(&mut self, password: &Password) {
+    pub fn insert(&mut self, password: &Password) -> Result<(), rusqlite::Error> {
         self.passwords.push(password.to_owned());
-        self.db.insert(password);
+        self.db.insert(password)?;
+        Ok(())
     }
 
-    pub fn delete(&mut self, id: usize) -> Result<(), Box<dyn Error>> {
-        if let Some(_) = self.passwords.get(id) {
-            self.passwords.remove(id);
-            self.db.delete(&id);
-            Ok(())
-        } else {
-            Err("Invalid password id. Unable to complete request.".into())
+    pub fn delete(&mut self, id: usize) -> Result<Password, Box<dyn error::Error>> {
+        match self.passwords.get(id) {
+            Some(..) => {
+                self.db.delete(&id)?;
+                let deleted_password = self.passwords.remove(id);
+                Ok(deleted_password)
+            }
+            None => {
+                Err("invalid password id, unable to complete request".into())
+            }
         }
     }
 
-    pub fn get_passwords(&mut self) {
-        self.passwords = self.db.get_passwords();
+    pub fn get_passwords(&mut self) -> Result<&Vec<Password>, rusqlite::Error> {
+        self.passwords = self.db.get_passwords()?;
+        Ok(&self.passwords)
     }
 }
 
 impl Display for Helsafe {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        let mut table = Table::new();
+        let mut table_vec = Vec::new();
         let field_names = vec![
             "Id",
             "Title",
@@ -86,22 +91,21 @@ impl Display for Helsafe {
             "Access Tokens",
             "Notes"
         ];
-        table.push_row(&field_names).unwrap();
+        table_vec.push(field_names);
 
         for password in &self.passwords {
-            let row = vec![
-                password.id.to_string(),
-                password.title.clone(),
-                password.username.clone(),
-                password.password.clone(),
-                password.email.clone(),
-                password.recovery_codes.clone(),
-                password.access_tokens.clone(),
-                password.notes.clone(),
-            ];
-            table.push_row_string(&row).unwrap();
+            table_vec.push(vec![
+                password.id.as_str(),
+                password.title.as_str(),
+                password.username.as_str(),
+                password.password.as_str(),
+                password.email.as_str(),
+                password.recovery_codes.as_str(),
+                password.access_tokens.as_str(),
+                password.notes.as_str(),
+            ]);
         }
 
-        write!(f, "{}", table.to_string())
+        write!(f, "{}", table_from(&table_vec))
     }
 }

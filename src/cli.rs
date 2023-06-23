@@ -1,7 +1,8 @@
 use std::{
     io::{self, Write, Stdin},
+    error
 };
-use cli_tables::Table;
+use cli_tables::table_from;
 use rpassword;
 use crate::{
     OperationMode,
@@ -23,7 +24,6 @@ impl Cli {
         println!("\nMenu:");
 
         // create an ascii table
-        let mut table = Table::new();
         let options = vec![
             vec!["#", "Options"],
             vec!["0", "Add password"],
@@ -33,7 +33,7 @@ impl Cli {
             vec!["4", "Copy password"],
             vec!["5", "Exit"]
         ];
-        table.push_rows(&options).unwrap();
+        let table = table_from(&options);
 
         let mut input = String::new();
 
@@ -68,34 +68,67 @@ impl Cli {
         }
     }
 
-    pub fn new_entry_handler(&mut self) -> Password{
-        let mut table = Table::new();
-        let headers = vec![
+    pub fn print_all(&self, passwords: &Vec<Password>) {
+        println!("\nList:");
+
+        let mut table_vec = Vec::new();
+        let field_names = vec![
+            "Id",
             "Title",
             "Username",
             "Password",
             "Email",
-            "Recovery_codes",
-            "Access_tokens",
-            "Notes",
+            "Recovery Codes",
+            "Access Tokens",
+            "Notes"
         ];
-        table.push_row(&headers).unwrap();
+        table_vec.push(field_names);
+
+        for password in passwords {
+            table_vec.push(vec![
+                password.id.as_str(),
+                password.title.as_str(),
+                password.username.as_str(),
+                password.password.as_str(),
+                password.email.as_str(),
+                password.recovery_codes.as_str(),
+                password.access_tokens.as_str(),
+                password.notes.as_str(),
+            ]);
+        }
+
+        println!("{}", table_from(&table_vec));
+        print!("Do you want to continue? [Y/n]");
+        io::stdout().flush().expect("Failed to flush stdout");
+        let mut input: String = String::new();
+        self.stdin.read_line(&mut input).expect("Failed to read input");
+    }
+
+    pub fn new_entry_handler(&mut self) -> Password{
+        let mut table = Vec::new();
+        let headers = vec![
+            "Title".to_string(),
+            "Username".to_string(),
+            "Password".to_string(),
+            "Email".to_string(),
+            "Recovery_codes".to_string(),
+            "Access_tokens".to_string(),
+            "Notes".to_string(),
+        ];
+        table.push(headers);
         
-        let mut entry = vec![String::new(); 7];
+        table.push(vec![String::new(); 7]);
 
         println!("\n( Password creation manager )");
-        println!("{}", table.to_string());
 
         print!("Title: ");
         io::stdout()
             .flush()
             .expect("Failed to flush stdout.");
         self.stdin
-            .read_line(&mut entry[0])
+            .read_line(&mut table[1][0])
             .expect("Failed to read input.");
-        entry[0] = entry[0].trim().to_string();
-        table.push_row_string(&entry).unwrap();
-        println!("{}", table.to_string());
+        table[1][0] = table[1][0].trim().to_string();
         
 
         print!("Username: ");
@@ -103,79 +136,67 @@ impl Cli {
             .flush()
             .expect("Failed to flush stdout.");
         self.stdin
-            .read_line(&mut entry[1])
+            .read_line(&mut table[1][1])
             .expect("Failed to read input.");
-        entry[1] = entry[1].trim().to_string();
-        table.delete_record(1).unwrap();
-        table.push_row_string(&entry).unwrap();
+        table[1][1] = table[1][1].trim().to_string();
 
-        entry[2] = rpassword::prompt_password("Password: ").unwrap();
-        print!("*************\n");
+        table[1][2] = rpassword::prompt_password("Password: ").unwrap();
+        
         io::stdout()
             .flush()
             .expect("Failed to flush stdout.");
-        entry[2] = entry[2].trim().to_string();
-        table.delete_record(1).unwrap();
-        table.push_row_string(&entry).unwrap();
+        table[1][2] = table[1][2].trim().to_string();
 
         print!("Email: ");
         io::stdout()
             .flush()
             .expect("Failed to flush stdout.");
         self.stdin
-            .read_line(&mut entry[3])
+            .read_line(&mut table[1][3])
             .expect("Failed to read input.");
-        entry[3] = entry[3].trim().to_string();
-        table.delete_record(3).unwrap();
-        table.push_row_string(&entry).unwrap();
+        table[1][3] = table[1][3].trim().to_string();
 
         print!("Recovery Codes: ");
         io::stdout()
             .flush()
             .expect("Failed to flush stdout.");
         self.stdin
-            .read_line(&mut entry[4])
+            .read_line(&mut table[1][4])
             .expect("Failed to read input.");
-        entry[4] = entry[4].trim().to_string();
-        table.delete_record(1).unwrap();
-        table.push_row_string(&entry).unwrap();
+        table[1][4] = table[1][4].trim().to_string();
 
         print!("Access Tokens: ");
         io::stdout()
             .flush()
             .expect("Failed to flush stdout.");
         self.stdin
-            .read_line(&mut entry[5])
+            .read_line(&mut table[1][5])
             .expect("Failed to read input.");
-        entry[5] = entry[5].trim().to_string();
-        table.delete_record(1).unwrap();
-        table.push_row_string(&entry).unwrap();
+        table[1][5] = table[1][5].trim().to_string();
 
         print!("Notes: ");
         io::stdout()
             .flush()
             .expect("Failed to flush stdout.");
         self.stdin
-            .read_line(&mut entry[6])
+            .read_line(&mut table[1][6])
             .expect("Failed to read input.");
-        entry[6] = entry[6].trim().to_string();
-        table.delete_record(1).unwrap();
-        table.push_row_string(&entry).unwrap();
+        table[1][6] = table[1][6].trim().to_string();
 
         // Create the Password struct using the trimmed values
         Password {
-            id: 0,
-            title: entry[0].clone(),
-            username: entry[1].clone(),
-            password: entry[2].clone(),
-            email: entry[3].clone(),
-            recovery_codes: entry[4].clone(),
-            access_tokens: entry[5].clone(),
-            notes: entry[6].clone(),
+            id: "0".to_string(),
+            title: table[1][0].clone(),
+            username: table[1][1].clone(),
+            password: table[1][2].clone(),
+            email: table[1][3].clone(),
+            recovery_codes: table[1][4].clone(),
+            access_tokens: table[1][5].clone(),
+            notes: table[1][6].clone(),
         }
     }
 
-    pub fn delete_handler(&mut self) -> usize {
+    pub fn handle_delete_request(&self) -> usize {
         let mut input = String::new();
 
         println!("\n( You cannot undo this action )");
@@ -194,15 +215,13 @@ impl Cli {
             println!("Failed to parse integer.");
             std::process::exit(1);
         }
+    }
 
-        /*let delete_result: Result<(), Box<dyn Error>> = safe.delete(id);
-        match delete_result {
-            Ok(()) => {
-                println!("Password deleted successfully.");
-            }
-            Err(err) => {
-                println!("Failed to delete password: {}", err);
-            }
-        }*/
+    pub fn handle_delete_success(&self, password: &Password) {
+        println!("Success: {} deleted", password.title);
+    }
+
+    pub fn handle_delete_failure(&self, err: Box<dyn error::Error>) {
+        println!("Failed: {}", err);
     }
 }

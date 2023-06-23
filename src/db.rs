@@ -66,8 +66,8 @@ impl Database {
         Ok(())
     }
 
-    pub fn get_passwords(&self) -> Vec<Password> {
-        let mut statement = self.conn.prepare("SELECT * FROM passwords").unwrap();
+    pub fn get_passwords(&self) -> Result<Vec<Password>, rusqlite::Error> {
+        let mut statement = self.conn.prepare("SELECT * FROM passwords")?;
         let items: Vec<Password> = statement.query_map([], |row| {
             let password = Password::new_with_id(
                 row.get("id").unwrap(),
@@ -79,30 +79,34 @@ impl Database {
                 row.get("access_tokens").unwrap(),
                 row.get("notes").unwrap(),
             );
+            println!("{}", password);
             Ok(password)
-        }).unwrap().map(|i| i.unwrap()).collect();
-        items
+        })?.map(|i| i.unwrap()).collect();
+        Ok(items)
     }
 
-    pub fn insert(&self, password: &Password) {
+    pub fn insert(&self, password: &Password) -> Result<(), rusqlite::Error> {
         self.conn.execute(
             "INSERT INTO passwords (title, username, password, email, recovery_codes, access_tokens, notes) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
             params![password.title, password.username, password.password, password.email, password.recovery_codes, password.access_tokens, password.notes]
-        ).unwrap();
+        )?;
+        Ok(())
     }
 
     #[allow(dead_code)]
-    pub fn update(&self, id: usize, password: &Password) {
+    pub fn update(&self, id: usize, password: &Password) -> Result<(), rusqlite::Error> {
         self.conn.execute(
             "UPDATE passwords SET title=?1, username=?2, password=?3 email=?4 recovery_codes=?5 access_tokens=?6 notes=?7 WHERE id=?8",
             params![password.title, password.username, password.password, password.email, password.recovery_codes, password.access_tokens, password.notes, id]
-        ).unwrap();
+        )?;
+        Ok(())
     }
 
-    pub fn delete(&self, id: &usize) {
+    pub fn delete(&self, id: &usize) -> Result<(), rusqlite::Error> {
         self.conn.execute(
-            "DELETE FROM passwords WHERE id=?1",
-            params![id]
-        ).unwrap();
+            "DELETE FROM passwords WHERE id=?",
+            params![*id]
+        )?;
+        Ok(())
     }
 }

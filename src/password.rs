@@ -1,6 +1,8 @@
+use std::fmt;
+
 #[derive(Clone, Debug)]
 pub struct Password {
-    pub id: usize,
+    pub id: String,
     pub title: String,
     pub username: String,
     pub password: String,
@@ -22,7 +24,7 @@ impl Password {
         notes: String,
     ) -> Self {
         Password {
-            id: 0,
+            id: "0".to_string(),
             title,
             username,
             password,
@@ -44,7 +46,7 @@ impl Password {
         notes: String,
     ) -> Self {
         Password {
-            id,
+            id: id.to_string(),
             title,
             username,
             password,
@@ -53,5 +55,11 @@ impl Password {
             access_tokens,
             notes
         }
+    }
+}
+
+impl fmt::Display for Password{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "[{}, {}, {}, {}, {}, {}, {}, {}]", self.id, self.title, self.username, self.password, self.email, self.recovery_codes, self.access_tokens, self.notes)
     }
 }
