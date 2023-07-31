@@ -1,10 +1,8 @@
-struct Password {
-    title: String,
-    username: String,
-    password: String,
-    email: String,
-    recovery_codes: Vec<String>,
-    notes: String,
+pub struct Password {
+    pub title: String,
+    pub username: String,
+    pub password: String,
+    pub email: String,
 }
 
 impl Password {
@@ -13,16 +11,21 @@ impl Password {
         username: String,
         password: String,
         email: String,
-        recovery_codes: Vec<String>,
-        notes: String,
     ) -> Self {
         Password {
             title,
             username,
             password,
             email,
-            recovery_codes,
-            notes,
         }
+    }
+
+    pub fn into_vec(self) -> Vec<String> {
+        let mut password_as_vec = Vec::new();
+        password_as_vec.push(self.title);
+        password_as_vec.push(self.username);
+        password_as_vec.push(self.password);
+        password_as_vec.push(self.email);
+        password_as_vec
     }
 }

@@ -1,15 +1,13 @@
 mod app;
+mod password;
 mod view;
-mod backend;
+mod db;
 use app::App;
-use view::View;
-use backend::Backend;
 use crossterm::{
     event::{EnableMouseCapture, DisableMouseCapture},
     terminal::{enable_raw_mode, disable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
     execute,
 };
-
 use std::{
     error::Error,
     io,

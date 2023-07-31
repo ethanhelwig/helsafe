@@ -57,9 +57,6 @@ impl Database {
                 username       TEXT    NOT NULL,
                 password       TEXT    NOT NULL,
                 email          TEXT    NOT NULL,
-                recovery_codes TEXT    NOT NULL,
-                access_tokens  TEXT    NOT NULL,
-                notes          TEXT    NOT NULL
             )"
         )?;
         Ok(())
@@ -68,17 +65,12 @@ impl Database {
     pub fn load_passwords(&self) -> Result<Vec<Password>, rusqlite::Error> {
         let mut statement = self.conn.prepare("SELECT * FROM passwords")?;
         let items: Vec<Password> = statement.query_map([], |row| {
-            let password = Password::new_with_id(
-                row.get("id").unwrap(),
+            let password = Password::new(
                 row.get("title").unwrap(),
                 row.get("username").unwrap(),
                 row.get("password").unwrap(),
                 row.get("email").unwrap(),
-                row.get("recovery_codes").unwrap(),
-                row.get("access_tokens").unwrap(),
-                row.get("notes").unwrap(),
             );
-            println!("{}", password);
             Ok(password)
         })?.map(|i| i.unwrap()).collect();
         Ok(items)
@@ -86,8 +78,8 @@ impl Database {
 
     pub fn insert(&self, password: &Password) -> Result<(), rusqlite::Error> {
         self.conn.execute(
-            "INSERT INTO passwords (title, username, password, email, recovery_codes, access_tokens, notes) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
-            params![password.title, password.username, password.password, password.email, password.recovery_codes, password.access_tokens, password.notes]
+            "INSERT INTO passwords (title, username, password, email) VALUES (?1, ?2, ?3, ?4)",
+            params![password.title, password.username, password.password, password.email]
         )?;
         Ok(())
     }
@@ -95,8 +87,8 @@ impl Database {
     #[allow(dead_code)]
     pub fn update(&self, id: usize, password: &Password) -> Result<(), rusqlite::Error> {
         self.conn.execute(
-            "UPDATE passwords SET title=?1, username=?2, password=?3 email=?4 recovery_codes=?5 access_tokens=?6 notes=?7 WHERE id=?8",
-            params![password.title, password.username, password.password, password.email, password.recovery_codes, password.access_tokens, password.notes, id]
+            "UPDATE passwords SET title=?1, username=?2, password=?3 email=?4 WHERE id=?4",
+            params![password.title, password.username, password.password, password.email, id]
         )?;
         Ok(())
     }

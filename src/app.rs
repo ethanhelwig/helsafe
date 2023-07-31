@@ -1,18 +1,16 @@
 use crate::{
+    db::Database,
     password::Password,
-    view::View,
+    view::draw_ui,
 };
+use rusqlite::ErrorCode;
 use crossterm::event::{self, Event, KeyCode};
 use std::{
-    io::{self, BufRead, BufReader},
-    collections::HashMap,
+    process::exit,
     error::Error,
-    fs::File,
 };
-use rpassword;
 use tui::{
     backend::Backend,
-    layout::Rect,
     Terminal,
 };
 
@@ -27,9 +25,8 @@ enum State {
 
 pub struct App {
     state: State,
-    db: Database,
-    passwords: Vec<Password>,
-    search_txt: String,
+    pub passwords: Vec<Password>,
+    search_text: String,
 }
 
 impl App {
@@ -38,7 +35,10 @@ impl App {
             Ok(db) => db,
             Err(err) => {
                 if let Some(rusqlite_err) = err.downcast_ref::<rusqlite::Error>() {
-                    println!("Error: HTTP 500 Internal Server Error");
+                    if rusqlite_err.sqlite_error_code() == Some(ErrorCode::NotADatabase) {
+                        println!("Error: HTTP 500 Internal Server Error");
+                        exit(1);
+                    }
                 } else {
                     println!("{:?}", err);
                 }
@@ -50,37 +50,49 @@ impl App {
         Ok(
             App {
                 state: State::Menu,
-                db,
                 passwords: db.load_passwords()?,
                 search_text: String::new(),
             }
         )
     }
 
-    pub fn run() -> Result<(), Box<dyn Error>> {
+    pub fn run<B: Backend>(mut self, terminal: &mut Terminal<B>) -> Result<(), Box<dyn Error>> {
         loop {
-            match app.state {
-                State::Menu => {
-                    let next_state = View::menu_handler();
-                    app.change_state(next_state);
-                },
-                State::Entry => {
-                    let new_password = View::new_pw_handler();
-                    app.safe.insert(&new_password)?;
-                    app.change_state(State::Menu);
-                },
-                State::Delete => {
-                    let pass_id = View::del_pw_handler();
-                    app.safe.delete(id)?;
-                    app.change_state(State::Menu);
-                },
-                State::Search => {
-                    todo!();
-                },
-                State::Copy => {
-                    todo!();
-                },
-                State::Exit => return Ok(()),
+	        terminal.draw(|f| {
+            	match self.state {
+                    State::Menu => {
+                    	let _next_state = draw_ui(f, &self).unwrap();
+                    	//self.change_state(next_state);
+                    },
+                    State::Entry => {
+                    	//let new_password = View::new_pw_handler();
+                    	//app.safe.insert(&new_password)?;
+                    	self.change_state(State::Menu);
+                    },
+                    State::Delete => {
+                    	//let pass_id = View::del_pw_handler();
+                    	//app.safe.delete(id)?;
+                    	self.change_state(State::Menu);
+                    },
+                    State::Search => {
+                    	todo!();
+                    },
+                    State::Copy => {
+                    	todo!();
+                    },
+                    State::Exit => exit(0),
+            	}
+	        });
+	    
+            if let Event::Key(key) = event::read()? {
+		        match key.code {
+		            KeyCode::Char('q') => exit(0),
+		            KeyCode::Up => todo!(),
+                    KeyCode::Down => todo!(),
+                    KeyCode::Left => todo!(),
+                    KeyCode::Right => todo!(),
+                    _ => {},
+                }
             }
         }
     }
