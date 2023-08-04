@@ -52,12 +52,12 @@ impl Database {
     pub fn create_table(&self) -> Result<(), rusqlite::Error> {
         self.conn.execute_batch(
         "CREATE TABLE IF NOT EXISTS passwords(
-                id             INTEGER PRIMARY KEY AUTOINCREMENT,
-                title          TEXT    NOT NULL,
-                username       TEXT    NOT NULL,
-                password       TEXT    NOT NULL,
-                email          TEXT    NOT NULL,
-            )"
+                id       INTEGER PRIMARY KEY AUTOINCREMENT,
+                title    TEXT    NOT NULL,
+                username TEXT    NOT NULL,
+                password TEXT    NOT NULL,
+                email    TEXT    NOT NULL
+            );"
         )?;
         Ok(())
     }
