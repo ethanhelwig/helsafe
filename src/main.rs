@@ -20,9 +20,9 @@ use tui::{
 fn main() -> Result<(), Box<dyn Error>> {
     // prompt password from user
     let pass_key = rpassword::prompt_password("Enter password:")?;
-    
+
     // app setup
-    let mut app = App::new(&pass_key)?; // success dependant on pass key
+    let app = App::new(&pass_key)?; // success dependant on pass key
 
     // terminal setup
     enable_raw_mode()?;
