@@ -1,3 +1,4 @@
+#[derive(Debug)]
 pub struct Password {
     pub title: String,
     pub username: String,
@@ -18,14 +19,5 @@ impl Password {
             password,
             email,
         }
-    }
-
-    pub fn into_vec(self) -> Vec<String> {
-        let mut password_as_vec = Vec::new();
-        password_as_vec.push(self.title);
-        password_as_vec.push(self.username);
-        password_as_vec.push(self.password);
-        password_as_vec.push(self.email);
-        password_as_vec
     }
 }
