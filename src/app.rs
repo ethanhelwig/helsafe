@@ -1,31 +1,29 @@
 use crate::{
     db::Database,
     password::Password,
-    view::draw_ui,
+    view::View,
 };
-use rusqlite::ErrorCode;
 use crossterm::event::{self, Event, KeyCode};
-use std::{
-    process::exit,
-    error::Error,
-};
+use std::error::Error;
 use tui::{
     backend::Backend,
     Terminal,
 };
 
+#[derive(PartialEq)]
 enum State {
     Menu,
     Entry,
     Delete,
     Search,
     Copy,
-    Exit,
 }
 
 pub struct App {
     state: State,
-    pub passwords: Vec<Password>,
+    db: Database,
+    view: View,
+    passwords: Vec<Password>,
     search_text: String,
 }
 
@@ -33,24 +31,17 @@ impl App {
     pub fn new(key: &String) -> Result<Self, Box<dyn Error>> {
         let db = match Database::new(key) {
             Ok(db) => db,
-            Err(err) => {
-                if let Some(rusqlite_err) = err.downcast_ref::<rusqlite::Error>() {
-                    if rusqlite_err.sqlite_error_code() == Some(ErrorCode::NotADatabase) {
-                        println!("Error: HTTP 500 Internal Server Error");
-                        exit(1);
-                    }
-                } else {
-                    println!("{:?}", err);
-                }
-
-                exit(1);
-            }
+            Err(err) => return Err(err)
         };
+
+        let passwords = db.load_passwords()?;
 
         Ok(
             App {
                 state: State::Menu,
-                passwords: db.load_passwords()?,
+                db,
+                view: View::new(),
+                passwords,
                 search_text: String::new(),
             }
         )
@@ -61,7 +52,7 @@ impl App {
 	        terminal.draw(|f| {
             	match self.state {
                     State::Menu => {
-                    	let _next_state = draw_ui(f, &self).unwrap();
+                    	self.view.draw_ui(f, &self).unwrap();
                     	//self.change_state(next_state);
                     },
                     State::Entry => {
@@ -79,22 +70,37 @@ impl App {
                     },
                     State::Copy => {
                     	todo!();
-                    },
-                    State::Exit => exit(0),
+                    }
             	}
-	        });
+	        })?;
 	    
             if let Event::Key(key) = event::read()? {
 		        match key.code {
-		            KeyCode::Char('q') => exit(0),
-		            KeyCode::Up => todo!(),
-                    KeyCode::Down => todo!(),
+		            KeyCode::Char('q') => return Ok(()),
+		            KeyCode::Up => {
+                        if self.state == State::Menu {
+                            self.view.select_next(self.passwords.len());
+                        }
+                    },
+                    KeyCode::Down => {
+                        if self.state == State::Menu {
+                            self.view.select_prev(self.passwords.len());
+                        }
+                    },
                     KeyCode::Left => todo!(),
                     KeyCode::Right => todo!(),
                     _ => {},
                 }
             }
         }
+    }
+
+    pub fn get_state(&self) -> &State {
+        &self.state
+    }
+
+    pub fn get_passwords(&self) -> &Vec<Password> {
+        &self.passwords
     }
 
     fn change_state(&mut self, new_state: State) {
