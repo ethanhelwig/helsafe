@@ -5,7 +5,7 @@ use crate::{
 use std::error::Error;
 use tui::{
     backend::Backend,
-    layout::{Alignment, Constraint, Direction, Layout},
+    layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Style, Modifier},
     widgets::{Block, Cell, Row, Borders, Table, Paragraph, TableState},
     text::Span,
@@ -85,10 +85,10 @@ impl View {
             .split(outer_layout[1]);
         
         let passwords = app.get_passwords();
-        let password_list = create_password_table(passwords); 
+        let password_list = create_password_table(passwords);
         f.render_stateful_widget(password_list, content_layout[0], &mut self.table_state);
     
-        let footer_block = create_footer_block(app);
+        let footer_block = create_footer_block(&self.table_state, passwords.len());
         f.render_widget(footer_block, outer_layout[2]);
     
         Ok(())
@@ -97,55 +97,63 @@ impl View {
 
 fn create_password_table(passwords: &Vec<Password>) -> Table {
     let header_cells = [
-        Cell::from("Title").style(Style::default().fg(Color::Rgb(200,200,200))),
-        Cell::from("Username/Email").style(Style::default().fg(Color::Rgb(200,200,200))),
+        Cell::from("Title").style(Style::default()),
+        Cell::from("Username/Email").style(Style::default())
     ];
     
     let header = Row::new(header_cells)
-        .style(Style::default().fg(Color::Rgb(200,200,200)))
-        .height(1)
-        .bottom_margin(1);
+        .style(Style::default().bg(Color::Blue));
 
-    let mut rows: Vec<Row> = Vec::new();
-    for password in passwords.iter() {
-        let mut cells: Vec<Cell> = Vec::new();
-        cells.push(Cell::from(password.title.clone()));
-        if !password.username.is_empty() && !password.email.is_empty() {
-            cells.push(
-                Cell::from(password.email.clone())
-                    .style(Style::default().fg(Color::Rgb(200,200,200)))
-            );
-        }
-        else if password.username.is_empty() {
-            cells.push(
-                Cell::from(password.email.clone())
-                    .style(Style::default().fg(Color::Rgb(200,200,200)))
-            );
-        }
-        else {
-            cells.push(
-                Cell::from(password.username.clone())
-                    .style(Style::default().fg(Color::Rgb(200,200,200)))
-            );
-        }
+    let rows = passwords.iter().map(|item| {
+        let title = &item.title;
+        let username = {
+            if !item.username.is_empty() && !item.email.is_empty() {
+                &item.username
+            }
+            else if !item.username.is_empty() {
+                &item.username
+            }
+            else {
+                &item.email
+            }
+        };
 
-        rows.push(
-            Row::new(cells)
-                .height(1)
-                .bottom_margin(1)
-        )
-    }
+        let cells = vec![
+            Cell::from(title.clone()),
+            Cell::from(username.clone())
+        ];
+
+        Row::new(cells)
+    });
 
     Table::new(rows)
         .header(header)
         .block(Block::default().borders(Borders::ALL).title("Passwords"))
         .highlight_style(Style::default().add_modifier(Modifier::REVERSED))
         .highlight_symbol(">> ")
+        .widths(&[
+            Constraint::Percentage(50),
+            Constraint::Length(30),
+            Constraint::Min(10)
+        ]
+    )
 }
 
-fn create_footer_block(app: &App) -> Paragraph {
-    let footer_block = Block::default();
-    let footer_text = String::from(format!("test"));
+fn create_footer_block(table_state: &TableState, num_passwords: usize) -> Paragraph {
     
-    Paragraph::new(Span::styled(footer_text, Style::default()))
+    let footer_text = String::from(
+        format!(
+            " selected: {}/{} (use arrow keys to navigate, press q to exit) ", 
+            match table_state.selected() {
+                Some(index) => index + 1,
+                None => 0
+            }, 
+            num_passwords
+        )
+    );
+
+    Paragraph::new(Span::styled(
+        footer_text, 
+        Style::default().add_modifier(Modifier::REVERSED))
+    )
 }
