@@ -10,19 +10,18 @@ use tui::{
     Terminal,
 };
 
-#[derive(PartialEq)]
-enum State {
-    Menu,
-    Entry,
+#[derive(Clone, Copy, PartialEq)]
+pub enum State {
+    Details,
+    Insert,
     Delete,
-    Search,
-    Copy,
+    Search
 }
 
 pub struct App {
     state: State,
-    db: Database,
-    passwords: Vec<Password>
+    passwords: Vec<Password>,
+    db: Database
 }
 
 impl App {
@@ -36,9 +35,9 @@ impl App {
 
         Ok(
             App {
-                state: State::Menu,
-                db,
-                passwords
+                state: State::Details,
+                passwords,
+                db
             }
         )
     }
@@ -47,47 +46,40 @@ impl App {
         let mut view = View::new();
         loop {
 	        terminal.draw(|f| {
-            	match self.state {
-                    State::Menu => {
-                    	view.draw_ui(f, &self).unwrap();
-                    },
-                    State::Entry => {
-                    	//let new_password = View::new_pw_handler();
-                    	//app.safe.insert(&new_password)?;
-                    	self.change_state(State::Menu);
-                    },
-                    State::Delete => {
-                    	//let pass_id = View::del_pw_handler();
-                    	//app.safe.delete(id)?;
-                    	self.change_state(State::Menu);
-                    },
-                    State::Search => {
-                    	todo!();
-                    },
-                    State::Copy => {
-                    	todo!();
-                    }
-            	}
+                view.draw_ui(f, &self).unwrap();
 	        })?;
 	    
             if let Event::Key(key) = event::read()? {
 		        match key.code {
 		            KeyCode::Char('q') => return Ok(()),
 		            KeyCode::Up => {
-                        if self.state == State::Menu {
+                        if self.state == State::Details {
                             view.select_prev(self.passwords.len());
                         }
                     },
                     KeyCode::Down => {
-                        if self.state == State::Menu {
+                        if self.state == State::Details {
                             view.select_next(self.passwords.len());
                         }
                     },
-                    KeyCode::Left => todo!(),
-                    KeyCode::Right => todo!(),
+                    KeyCode::Left | KeyCode::Right => view.toggle_focus_details(),
+                    KeyCode::Tab => self.next_tab(),
+                    KeyCode::Char(' ') => view.toggle_show_password(),
+                    KeyCode::Insert => self.state = State::Insert,
+                    KeyCode::Delete => self.state = State::Delete,
+                    KeyCode::Char('c') => todo!(),
                     _ => {},
                 }
             }
+        }
+    }
+
+    fn next_tab(&mut self) {
+        match self.state {
+            State::Details => self.state = State::Insert,
+            State::Insert => self.state = State::Delete,
+            State::Delete => self.state = State::Search,
+            State::Search => self.state = State::Details
         }
     }
 
@@ -95,7 +87,20 @@ impl App {
         &self.passwords
     }
 
-    fn change_state(&mut self, new_state: State) {
-        self.state = new_state;
+    pub fn get_num_passwords(&self) -> usize {
+        self.passwords.len()
+    }
+
+    pub fn get_state(&self) -> State {
+        self.state
+    }
+
+    pub fn get_tab_index(&self) -> usize {
+        match self.state {
+            State::Details => 0,
+            State::Insert => 1,
+            State::Delete => 2,
+            State::Search => 3
+        }
     }
 }
