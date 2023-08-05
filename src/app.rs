@@ -22,9 +22,7 @@ enum State {
 pub struct App {
     state: State,
     db: Database,
-    view: View,
-    passwords: Vec<Password>,
-    search_text: String,
+    passwords: Vec<Password>
 }
 
 impl App {
@@ -40,20 +38,18 @@ impl App {
             App {
                 state: State::Menu,
                 db,
-                view: View::new(),
-                passwords,
-                search_text: String::new(),
+                passwords
             }
         )
     }
 
     pub fn run<B: Backend>(mut self, terminal: &mut Terminal<B>) -> Result<(), Box<dyn Error>> {
+        let mut view = View::new();
         loop {
 	        terminal.draw(|f| {
             	match self.state {
                     State::Menu => {
-                    	self.view.draw_ui(f, &self).unwrap();
-                    	//self.change_state(next_state);
+                    	view.draw_ui(f, &self).unwrap();
                     },
                     State::Entry => {
                     	//let new_password = View::new_pw_handler();
@@ -79,12 +75,12 @@ impl App {
 		            KeyCode::Char('q') => return Ok(()),
 		            KeyCode::Up => {
                         if self.state == State::Menu {
-                            self.view.select_next(self.passwords.len());
+                            view.select_prev(self.passwords.len());
                         }
                     },
                     KeyCode::Down => {
                         if self.state == State::Menu {
-                            self.view.select_prev(self.passwords.len());
+                            view.select_next(self.passwords.len());
                         }
                     },
                     KeyCode::Left => todo!(),
@@ -93,10 +89,6 @@ impl App {
                 }
             }
         }
-    }
-
-    pub fn get_state(&self) -> &State {
-        &self.state
     }
 
     pub fn get_passwords(&self) -> &Vec<Password> {
