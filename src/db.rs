@@ -75,7 +75,8 @@ impl Database {
         })?.map(|i| i.unwrap()).collect();
         Ok(items)
     }
-
+    
+    #[allow(dead_code)]
     pub fn insert(&self, password: &Password) -> Result<(), rusqlite::Error> {
         self.conn.execute(
             "INSERT INTO passwords (title, username, password, email) VALUES (?1, ?2, ?3, ?4)",
@@ -93,6 +94,7 @@ impl Database {
         Ok(())
     }
 
+    #[allow(dead_code)]
     pub fn delete(&self, id: &usize) -> Result<(), rusqlite::Error> {
         self.conn.execute(
             "DELETE FROM passwords WHERE id=?",
