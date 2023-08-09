@@ -160,7 +160,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "helsafe-rebuild"
+name = "helsafe"
 version = "0.1.0"
 dependencies = [
  "crossterm 0.26.1",
